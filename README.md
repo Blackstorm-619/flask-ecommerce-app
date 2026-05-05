@@ -1,37 +1,62 @@
+# Flask E-Commerce App
 
-```
-Flask
-├─ instance
-│  └─ market.db
-├─ market
-│  ├─ forms.py
-│  ├─ instance
-│  │  └─ market.db
-│  ├─ models.py
-│  ├─ routes.py
-│  ├─ templates
-│  │  ├─ base.html
-│  │  ├─ cart.html
-│  │  ├─ home.html
-│  │  ├─ home4.html
-│  │  ├─ includes
-│  │  │  ├─ items_modals.html
-│  │  │  └─ owned_items_modals.html
-│  │  ├─ item_detail.html
-│  │  ├─ login.html
-│  │  ├─ market.html
-│  │  ├─ market4.html
-│  │  └─ register.html
-│  ├─ __init__.py
-│  └─ __pycache__
-│     ├─ forms.cpython-313.pyc
-│     ├─ models.cpython-313.pyc
-│     ├─ routes.cpython-313.pyc
-│     └─ __init__.cpython-313.pyc
-├─ run.py
-├─ seed.py
-├─ tempCodeRunnerFile.py
-└─ __pycache__
-   └─ app.cpython-313.pyc
+A full-stack Flask-based e-commerce web application with authentication, cart system, reviews, and order management.
 
+## 🚀 Features
+
+* User authentication (Login/Register)
+* Product listing and detail pages
+* Shopping cart system
+* Order checkout system
+* Product reviews
+* Image support for products
+
+## 🛠 Tech Stack
+
+* Python (Flask)
+* SQLite
+* SQLAlchemy
+* Flask-Login
+* Bootstrap (Frontend)
+
+## ⚙️ Setup
+
+1. Clone the repo:
+
+```bash
+git clone https://github.com/yourusername/flask-market.git
+cd flask-market
 ```
+
+2. Create virtual environment:
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+3. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Create `.env` file:
+
+```env
+SECRET_KEY=your_secret_key
+```
+
+5. Run the app:
+
+```bash
+python run.py
+```
+
+## 📸 Screenshots
+
+(Add screenshots here later)
+
+## 📌 Notes
+
+* Database file is not included. Run migrations or seed manually.

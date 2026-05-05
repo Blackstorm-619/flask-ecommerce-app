@@ -8,6 +8,11 @@ __pycache__/
 venv/
 .env
 
+#templates
+templates/
+home4.html
+market4.html
+
 # Flask
 instance/
 *.db
