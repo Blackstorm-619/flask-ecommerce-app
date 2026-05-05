@@ -1,0 +1,434 @@
+{% extends 'base.html' %}
+{% block title %}My Cart — AP Market{% endblock %}
+{% block content %}
+
+<style>
+   .cart-wrapper {
+      max-width: 1100px;
+      margin: 2.5rem auto;
+      padding: 0 1.5rem;
+   }
+
+   .cart-page-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.8rem;
+      margin-bottom: 0.3rem;
+   }
+
+   .cart-page-sub {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      margin-bottom: 2rem;
+   }
+
+   /* ── CART TABLE ── */
+   .cart-table-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+   }
+
+   .cart-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0;
+   }
+
+   .cart-table thead th {
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+      padding: 13px 20px;
+      border-bottom: 1px solid var(--border);
+   }
+
+   .cart-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+   }
+
+   .cart-table tbody tr:last-child { border-bottom: none; }
+   .cart-table tbody tr:hover { background: var(--bg-card-hover); }
+
+   .cart-table td {
+      padding: 16px 20px;
+      vertical-align: middle;
+      font-size: 0.9rem;
+   }
+
+   .item-name-cell { font-weight: 600; }
+   .item-barcode-cell { color: var(--text-muted); font-family: monospace; font-size: 0.8rem; }
+
+   .price-cell {
+      color: var(--accent);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+   }
+
+   /* qty controls */
+   .qty-form { display: flex; align-items: center; gap: 6px; }
+
+   .qty-btn {
+      width: 28px;
+      height: 28px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 6px;
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+   }
+
+   .qty-btn:hover { background: var(--bg-card-hover); border-color: var(--border-accent); }
+
+   .qty-input {
+      width: 52px;
+      text-align: center;
+      background: var(--bg-secondary) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text-primary) !important;
+      border-radius: 6px !important;
+      padding: 4px 6px !important;
+      font-size: 0.88rem !important;
+   }
+
+   .qty-input:focus {
+      border-color: var(--border-accent) !important;
+      box-shadow: 0 0 0 2px rgba(240,165,0,0.1) !important;
+      outline: none !important;
+   }
+
+   .btn-update {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+   }
+   .btn-update:hover { border-color: var(--accent); color: var(--accent); }
+
+   /* remove btn */
+   .btn-remove {
+      background: transparent;
+      border: 1px solid rgba(231,76,60,0.25);
+      color: rgba(231,76,60,0.7);
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+   }
+   .btn-remove:hover { background: rgba(231,76,60,0.12); border-color: #e74c3c; color: #e74c3c; }
+
+   .subtotal-cell {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      color: var(--text-primary);
+   }
+
+   /* ── SUMMARY CARD ── */
+   .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.8rem;
+      position: sticky;
+      top: 90px;
+   }
+
+   .summary-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      margin-bottom: 1.4rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+   }
+
+   .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      font-size: 0.88rem;
+   }
+
+   .summary-row .label { color: var(--text-muted); }
+   .summary-row .value { font-weight: 600; }
+
+   .summary-total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1.2rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+   }
+
+   .summary-total-label {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+   }
+
+   .summary-total-value {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+      color: var(--accent);
+   }
+
+   .balance-row {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 1.2rem 0;
+      font-size: 0.85rem;
+   }
+
+   .balance-row .label { color: var(--text-muted); }
+
+   .balance-row .value {
+      font-weight: 700;
+      color: var(--success, #2ecc71);
+   }
+
+   .insufficient { color: #e74c3c !important; }
+
+   .btn-checkout {
+      width: 100%;
+      background: var(--accent);
+      border: none;
+      color: #0d0d0d;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 13px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 0.5rem;
+   }
+
+   .btn-checkout:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(240,165,0,0.3);
+   }
+
+   .btn-checkout:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+   }
+
+   .btn-continue {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-decoration: none;
+      margin-top: 1rem;
+      transition: color 0.15s;
+   }
+   .btn-continue:hover { color: var(--accent); text-decoration: none; }
+
+   /* ── EMPTY CART ── */
+   .empty-cart {
+      text-align: center;
+      padding: 5rem 2rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+   }
+   .empty-cart-icon {
+      font-size: 3rem;
+      color: var(--text-muted);
+      opacity: 0.4;
+      margin-bottom: 1rem;
+   }
+   .empty-cart h3 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+   }
+   .empty-cart p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+   .btn-shop {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #0d0d0d;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      padding: 11px 24px;
+      border-radius: 9px;
+      text-decoration: none;
+      transition: all 0.2s;
+   }
+   .btn-shop:hover { background: var(--accent-hover); color: #0d0d0d; text-decoration: none; transform: translateY(-1px); }
+</style>
+
+<div class="cart-wrapper">
+   <h1 class="cart-page-title"><i class="fas fa-shopping-cart mr-2" style="color:var(--accent)"></i>My Cart</h1>
+   <p class="cart-page-sub">Review your items and checkout when ready</p>
+
+   {% if cart_items %}
+   <div class="row">
+      <!-- Cart Items -->
+      <div class="col-lg-8 mb-4">
+         <div class="cart-table-wrap">
+            <table class="cart-table">
+               <thead>
+                  <tr>
+                     <th>Item</th>
+                     <th>Price</th>
+                     <th>Quantity</th>
+                     <th>Subtotal</th>
+                     <th></th>
+                  </tr>
+               </thead>
+               <tbody>
+                  {% for row in cart_items %}
+                  <tr>
+                     <!-- Name + barcode -->
+                     <td>
+                        <div class="item-name-cell">{{ row.item.name }}</div>
+                        <div class="item-barcode-cell">{{ row.item.barcode }}</div>
+                     </td>
+
+                     <!-- Unit price -->
+                     <td class="price-cell">
+                        <i class="fas fa-rupee-sign" style="font-size:0.75rem"></i>{{ row.item.price }}
+                     </td>
+
+                     <!-- Quantity controls -->
+                     <td>
+                        <form method="POST" action="{{ url_for('update_cart', cart_id=row.cart_id) }}" class="qty-form">
+                           <button type="button" class="qty-btn"
+                              onclick="adjustQty(this, -1)">−</button>
+                           <input class="qty-input form-control"
+                              type="number" name="quantity"
+                              value="{{ row.quantity }}" min="1" max="99"
+                              id="qty-{{ row.cart_id }}">
+                           <button type="button" class="qty-btn"
+                              onclick="adjustQty(this, 1)">+</button>
+                           <button type="submit" class="btn-update">Update</button>
+                        </form>
+                     </td>
+
+                     <!-- Subtotal -->
+                     <td class="subtotal-cell">
+                        <i class="fas fa-rupee-sign" style="font-size:0.75rem;color:var(--text-muted)"></i>{{ row.subtotal }}
+                     </td>
+
+                     <!-- Remove -->
+                     <td>
+                        <form method="POST" action="{{ url_for('remove_from_cart', cart_id=row.cart_id) }}">
+                           <button type="submit" class="btn-remove" title="Remove">
+                              <i class="fas fa-trash-alt"></i>
+                           </button>
+                        </form>
+                     </td>
+                  </tr>
+                  {% endfor %}
+               </tbody>
+            </table>
+         </div>
+      </div>
+
+      <!-- Summary -->
+      <div class="col-lg-4">
+         <div class="summary-card">
+            <div class="summary-title">Order Summary</div>
+
+            <div class="summary-row">
+               <span class="label">Items ({{ cart_items | length }})</span>
+               <span class="value"><i class="fas fa-rupee-sign" style="font-size:0.75rem"></i>{{ total }}</span>
+            </div>
+            <div class="summary-row">
+               <span class="label">Shipping</span>
+               <span class="value" style="color:#2ecc71">Free</span>
+            </div>
+
+            <div class="summary-total-row">
+               <span class="summary-total-label">Total</span>
+               <span class="summary-total-value"><i class="fas fa-rupee-sign" style="font-size:1rem"></i>{{ total }}</span>
+            </div>
+
+            <div class="balance-row">
+               <span class="label"><i class="fas fa-wallet mr-1"></i>Your Balance</span>
+               <span class="value {% if current_user.budget < total %}insufficient{% endif %}">
+                  {{ current_user.prettier_budget }}
+               </span>
+            </div>
+
+            {% if current_user.budget < total %}
+            <p style="color:#e74c3c; font-size:0.8rem; margin-bottom:0.8rem">
+               <i class="fas fa-exclamation-circle mr-1"></i>Insufficient balance to checkout.
+            </p>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('checkout') }}">
+               <button type="submit" class="btn-checkout"
+                  {% if current_user.budget < total %}disabled{% endif %}>
+                  <i class="fas fa-lock mr-2"></i>Checkout Now
+               </button>
+            </form>
+
+            <div class="text-center">
+               <a href="{{ url_for('market_page') }}" class="btn-continue">
+                  <i class="fas fa-arrow-left"></i> Continue Shopping
+               </a>
+            </div>
+         </div>
+      </div>
+   </div>
+
+   {% else %}
+   <div class="empty-cart">
+      <div class="empty-cart-icon"><i class="fas fa-shopping-cart"></i></div>
+      <h3>Your cart is empty</h3>
+      <p>Head to the market and add some items!</p>
+      <a href="{{ url_for('market_page') }}" class="btn-shop">
+         <i class="fas fa-store"></i> Browse Market
+      </a>
+   </div>
+   {% endif %}
+</div>
+
+<script>
+   function adjustQty(btn, delta) {
+      // Find the input within the same qty-form
+      const form = btn.closest('.qty-form');
+      const input = form.querySelector('input[type="number"]');
+      let val = parseInt(input.value) + delta;
+      if (val < 1) val = 1;
+      if (val > 99) val = 99;
+      input.value = val;
+   }
+</script>
+
+{% endblock %}

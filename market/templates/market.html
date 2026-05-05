@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% block title %}Market — AP Market{% endblock %}
+{% block content %}
+
+<style>
+   .market-wrapper {
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+   }
+
+   .section-header {
+      margin-bottom: 1.2rem;
+   }
+
+   .section-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+      margin-bottom: 0.2rem;
+   }
+
+   .section-subtitle {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+   }
+
+   .market-table-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+   }
+
+   .market-table {
+      margin: 0;
+      width: 100%;
+      border-collapse: collapse;
+   }
+
+   .market-table thead th {
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+   }
+
+   .market-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s ease;
+   }
+
+   .market-table tbody tr:hover {
+      background: var(--bg-card-hover);
+   }
+
+   .market-table td {
+      padding: 14px 18px;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      vertical-align: middle;
+   }
+
+   .item-id {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-family: monospace;
+   }
+
+   .item-name {
+      font-weight: 600;
+   }
+
+   .item-barcode {
+      color: var(--text-muted);
+      font-family: monospace;
+      font-size: 0.82rem;
+   }
+
+   .item-price {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      color: var(--accent);
+   }
+
+   .btn-info-sm {
+      background: rgba(52,152,219,0.12);
+      border: 1px solid rgba(52,152,219,0.3);
+      color: #3498db;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 6px;
+   }
+
+   .btn-buy-sm {
+      background: rgba(46,204,113,0.12);
+      border: 1px solid rgba(46,204,113,0.3);
+      color: #2ecc71;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 6px;
+   }
+
+   .btn-detail-sm {
+      background: rgba(240,165,0,0.1);
+      border: 1px solid rgba(240,165,0,0.3);
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      margin-right: 6px;
+   }
+</style>
+
+<div class="market-wrapper">
+   <div class="row">
+
+      <!-- AVAILABLE ITEMS -->
+      <div class="col-lg-8">
+         <div class="section-header">
+            <h2 class="section-title">
+               <i class="fas fa-shopping-bag mr-2" style="color:var(--accent)"></i>
+               Available Items
+            </h2>
+         </div>
+
+         <div class="market-table-wrapper">
+            <table class="market-table">
+               <thead>
+                  <tr>
+                     <th>ID</th>
+                     <th>Name</th>
+                     <th>Barcode</th>
+                     <th>Price</th>
+                     <th>Options</th>
+                  </tr>
+               </thead>
+
+               <tbody>
+                  {% for item in items %}
+                  {% include 'includes/items_modals.html' %}
+
+                  <tr>
+                     <td>#{{ item.id }}</td>
+                     <td>{{ item.name }}</td>
+                     <td>{{ item.barcode }}</td>
+                     <td>₹{{ item.price }}</td>
+
+                     <td>
+
+                        <!-- DETAILS -->
+                        <a class="btn-detail-sm"
+                           href="{{ url_for('item_detail', item_id=item.id) }}">
+                           Details
+                        </a>
+
+                        <!-- INFO -->
+                        <button class="btn-info-sm"
+                           data-toggle="modal"
+                           data-target="#Modal-MoreInfo-{{ item.id }}">
+                           Info
+                        </button>
+
+                        <!-- ADD TO CART -->
+                        <form action="{{ url_for('add_to_cart', item_id=item.id) }}"
+                              method="POST"
+                              style="display:inline;">
+                           <button class="btn-info-sm">
+                              Cart
+                           </button>
+                        </form>
+
+                        <!-- BUY -->
+                        <button class="btn-buy-sm"
+                           data-toggle="modal"
+                           data-target="#Modal-PurchaseConfirm-{{ item.id }}">
+                           Buy
+                        </button>
+
+                     </td>
+                  </tr>
+
+                  {% endfor %}
+               </tbody>
+            </table>
+         </div>
+      </div>
+
+      <!-- OWNED ITEMS -->
+      <div class="col-lg-4 mt-4 mt-lg-0">
+         <div class="section-header">
+            <h2 class="section-title">
+               <i class="fas fa-box mr-2" style="color:var(--accent)"></i>
+               My Items
+            </h2>
+         </div>
+
+         <div class="owned-section">
+            {% for owned_item in owned_items %}
+            {% include 'includes/owned_items_modals.html' %}
+
+            <div class="owned-card">
+               <div>
+                  <div class="owned-card-name">{{ owned_item.name }}</div>
+                  <div class="owned-card-price">₹{{ owned_item.price }}</div>
+               </div>
+
+               <div style="display:flex; gap:6px;">
+                  <a class="btn-detail-sm"
+                     href="{{ url_for('item_detail', item_id=owned_item.id) }}">
+                     <i class="fas fa-eye"></i>
+                  </a>
+
+                  <button class="btn-sell-sm"
+                     data-toggle="modal"
+                     data-target="#Modal-SellingConfirm-{{ owned_item.id }}">
+                     Sell
+                  </button>
+               </div>
+            </div>
+
+            {% else %}
+            <div class="empty-state">
+               <p>No items owned yet.</p>
+            </div>
+            {% endfor %}
+         </div>
+      </div>
+
+   </div>
+</div>
+
+{% endblock %}

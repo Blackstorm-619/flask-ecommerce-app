@@ -1,0 +1,723 @@
+{% extends 'base.html' %}
+{% block title %}{{ item.name }} — AP Market{% endblock %}
+{% block content %}
+
+<style>
+   .detail-wrapper {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem;
+   }
+
+   /* ── BREADCRUMB ── */
+   .breadcrumb-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 2rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+   }
+   .breadcrumb-bar a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+   }
+   .breadcrumb-bar a:hover { color: var(--accent); }
+   .breadcrumb-bar .sep { opacity: 0.4; }
+   .breadcrumb-bar .current { color: var(--text-primary); font-weight: 500; }
+
+   /* ── MAIN LAYOUT ── */
+   .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      align-items: start;
+   }
+
+   @media (max-width: 768px) {
+      .detail-grid { grid-template-columns: 1fr; gap: 2rem; }
+   }
+
+   /* ── IMAGE GALLERY ── */
+   .gallery-main {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin-bottom: 12px;
+   }
+
+   .gallery-main img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+   }
+
+   .gallery-main:hover img { transform: scale(1.03); }
+
+   .gallery-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-muted);
+   }
+
+   .gallery-placeholder i { font-size: 3.5rem; opacity: 0.2; }
+   .gallery-placeholder span { font-size: 0.85rem; }
+
+   .gallery-thumbs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+   }
+
+   .gallery-thumb {
+      width: 68px;
+      height: 68px;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s ease;
+      background: var(--bg-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+   }
+
+   .gallery-thumb.active { border-color: var(--accent); }
+   .gallery-thumb:hover { border-color: rgba(240,165,0,0.5); }
+   .gallery-thumb img { width: 100%; height: 100%; object-fit: cover; }
+   .gallery-thumb i { color: var(--text-muted); opacity: 0.3; font-size: 1.2rem; }
+
+   /* ── PRODUCT INFO ── */
+   .product-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: {% if item.owner %}rgba(231,76,60,0.12){% else %}rgba(46,204,113,0.12){% endif %};
+      border: 1px solid {% if item.owner %}rgba(231,76,60,0.3){% else %}rgba(46,204,113,0.3){% endif %};
+      color: {% if item.owner %}#e74c3c{% else %}#2ecc71{% endif %};
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 50px;
+      margin-bottom: 1rem;
+   }
+
+   .product-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2rem;
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+   }
+
+   .product-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2rem;
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+   }
+
+   .product-barcode {
+      color: var(--text-muted);
+      font-family: monospace;
+      font-size: 0.8rem;
+      margin-bottom: 1.5rem;
+   }
+
+   .product-price-box {
+      background: var(--accent-dim);
+      border: 1px solid var(--border-accent);
+      border-radius: 12px;
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+   }
+
+   .product-price {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2rem;
+      color: var(--accent);
+   }
+
+   .product-price i { font-size: 1.3rem; }
+
+   .price-label {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+   }
+
+   .product-description {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      line-height: 1.8;
+      margin-bottom: 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+   }
+
+   /* ── ACTION BUTTONS ── */
+   .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+   }
+
+   /* make the cart form stretch like a flex child */
+   .action-buttons form {
+      flex: 1;
+      display: flex;
+   }
+
+   .btn-buy-detail {
+      flex: 1;
+      background: var(--accent);
+      border: none;
+      color: #0d0d0d;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 13px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+   }
+
+   .btn-buy-detail:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(240,165,0,0.35);
+   }
+
+   .btn-buy-detail:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+   }
+
+   .btn-back {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 13px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+   }
+
+   .btn-back:hover {
+      border-color: var(--border-accent);
+      color: var(--text-primary);
+      text-decoration: none;
+   }
+
+   /* ── META INFO ── */
+   .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 1.5rem;
+   }
+
+   .meta-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+   }
+
+   .meta-label {
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+   }
+
+   .meta-value {
+      font-weight: 600;
+      font-size: 0.9rem;
+   }
+
+   /* ── REVIEWS SECTION ── */
+   .reviews-section {
+      margin-top: 3rem;
+      padding-top: 2.5rem;
+      border-top: 1px solid var(--border);
+   }
+
+   .reviews-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+   }
+
+   .reviews-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.3rem;
+   }
+
+   .avg-rating {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+   }
+
+   .avg-rating .score {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2rem;
+      color: var(--accent);
+   }
+
+   .stars { color: var(--accent); font-size: 0.9rem; }
+   .stars .empty { color: var(--border); }
+
+   .review-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 12px;
+      transition: border-color 0.2s ease;
+   }
+
+   .review-card:hover { border-color: rgba(240,165,0,0.2); }
+
+   .review-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.6rem;
+   }
+
+   .reviewer-name {
+      font-weight: 700;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+   }
+
+   .reviewer-name i { color: var(--text-muted); }
+
+   .review-date {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+   }
+
+   .review-comment {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.7;
+   }
+
+   /* ── WRITE REVIEW ── */
+   .write-review-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+   }
+
+   .write-review-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+   }
+
+   .star-picker {
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-bottom: 1rem;
+   }
+
+   .star-picker input { display: none; }
+
+   .star-picker label {
+      font-size: 1.5rem;
+      color: var(--border);
+      cursor: pointer;
+      transition: color 0.15s ease;
+   }
+
+   .star-picker label:hover,
+   .star-picker label:hover ~ label { color: var(--accent); }
+
+   .review-textarea {
+      width: 100%;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      font-family: 'DM Sans', sans-serif;
+      resize: vertical;
+      min-height: 90px;
+      transition: border-color 0.2s ease;
+      margin-bottom: 10px;
+   }
+
+   .review-textarea:focus {
+      outline: none;
+      border-color: var(--border-accent);
+      box-shadow: 0 0 0 3px rgba(240,165,0,0.1);
+   }
+
+   .btn-submit-review {
+      background: var(--accent);
+      border: none;
+      color: #0d0d0d;
+      font-weight: 700;
+      font-size: 0.88rem;
+      padding: 10px 22px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+   }
+
+   .btn-submit-review:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+   }
+
+   .empty-reviews {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+   }
+
+   .empty-reviews i { font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.6rem; }
+
+   /* ── ANIMATIONS ── */
+   .fade-in {
+      animation: fadeIn 0.4s ease both;
+   }
+
+   @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+   }
+</style>
+
+<div class="detail-wrapper fade-in">
+
+   <!-- Breadcrumb -->
+   <div class="breadcrumb-bar">
+      <a href="{{ url_for('home_page') }}"><i class="fas fa-home"></i> Home</a>
+      <span class="sep">›</span>
+      <a href="{{ url_for('market_page') }}">Market</a>
+      <span class="sep">›</span>
+      <span class="current">{{ item.name }}</span>
+   </div>
+
+   <!-- Main Detail Grid -->
+   <div class="detail-grid">
+
+      <!-- LEFT: Image Gallery -->
+      <div>
+         <div class="gallery-main" id="mainImage">
+            {% if images %}
+               <img src="{{ images[0].image_url }}" alt="{{ item.name }}" id="mainImg">
+            {% else %}
+               <div class="gallery-placeholder">
+                  <i class="fas fa-image"></i>
+                  <span>No images yet</span>
+               </div>
+            {% endif %}
+         </div>
+
+         {% if images and images|length > 1 %}
+         <div class="gallery-thumbs">
+            {% for img in images %}
+            <div class="gallery-thumb {% if loop.first %}active{% endif %}" onclick="switchImage('{{ img.image_url }}', this)">
+               <img src="{{ img.image_url }}" alt="{{ item.name }} {{ loop.index }}">
+            </div>
+            {% endfor %}
+         </div>
+         {% endif %}
+      </div>
+
+      <!-- RIGHT: Product Info -->
+      <div>
+
+         <div class="product-badge">
+            {% if item.owner %}
+               <i class="fas fa-lock"></i> Sold
+            {% else %}
+               <i class="fas fa-check-circle"></i> Available
+            {% endif %}
+         </div>
+
+         <h1 class="product-title">{{ item.name }}</h1>
+         <div class="product-barcode"><i class="fas fa-barcode mr-1"></i>{{ item.barcode }}</div>
+
+         <!-- Price Box -->
+         <div class="product-price-box">
+            <div>
+               <div class="price-label">Price</div>
+               <div class="product-price">
+                  <i class="fas fa-rupee-sign"></i>{{ item.price }}
+               </div>
+            </div>
+            {% if current_user.is_authenticated %}
+            <div style="text-align:right">
+               <div class="price-label">Your Balance</div>
+               <div style="font-weight:700; color:var(--text-primary); font-size:1rem">
+                  <i class="fas fa-rupee-sign" style="font-size:0.8rem; color:var(--accent)"></i>
+                  {{ current_user.prettier_budget }}
+               </div>
+            </div>
+            {% endif %}
+         </div>
+
+         <!-- Description -->
+         <p class="product-description">{{ item.description }}</p>
+
+         <!-- ── ACTION BUTTONS ── -->
+         <div class="action-buttons">
+
+            <!-- Back -->
+            <a href="{{ url_for('market_page') }}" class="btn-back">
+               <i class="fas fa-arrow-left"></i> Back
+            </a>
+
+            {% if current_user.is_authenticated %}
+               {% if not item.owner %}
+
+                  <!-- Add to Cart -->
+                  <form action="{{ url_for('add_to_cart', item_id=item.id) }}" method="POST">
+                     {{ csrf_form.hidden_tag() }}
+                     <button type="submit" class="btn-buy-detail" style="background:#2980b9;">
+                        {% if in_cart %}
+                           <i class="fas fa-check"></i> In Cart
+                        {% else %}
+                           <i class="fas fa-cart-plus"></i> Add to Cart
+                        {% endif %}
+                     </button>
+                  </form>
+
+                  <!-- Buy Now -->
+                  <button class="btn-buy-detail"
+                     data-toggle="modal"
+                     data-target="#Modal-BuyDetail-{{ item.id }}"
+                     {% if not current_user.can_purchase(item) %}disabled{% endif %}>
+                     <i class="fas fa-bolt"></i>
+                     {% if current_user.can_purchase(item) %}Buy Now{% else %}Insufficient Balance{% endif %}
+                  </button>
+
+               {% else %}
+                  <button class="btn-buy-detail" disabled>
+                     <i class="fas fa-lock"></i> Already Sold
+                  </button>
+               {% endif %}
+
+            {% else %}
+               <a href="{{ url_for('login_page') }}" class="btn-buy-detail" style="text-decoration:none">
+                  <i class="fas fa-sign-in-alt"></i> Login to Buy
+               </a>
+            {% endif %}
+
+         </div>
+         <!-- ── END ACTION BUTTONS ── -->
+
+         <!-- Meta Info -->
+         <div class="meta-grid">
+            <div class="meta-item">
+               <div class="meta-label">Item ID</div>
+               <div class="meta-value" style="font-family:monospace">#{{ item.id }}</div>
+            </div>
+            <div class="meta-item">
+               <div class="meta-label">Status</div>
+               <div class="meta-value" style="color:{% if item.owner %}#e74c3c{% else %}#2ecc71{% endif %}">
+                  {% if item.owner %}Sold{% else %}In Stock{% endif %}
+               </div>
+            </div>
+            <div class="meta-item">
+               <div class="meta-label">Reviews</div>
+               <div class="meta-value">{{ reviews|length }}</div>
+            </div>
+            <div class="meta-item">
+               <div class="meta-label">Avg Rating</div>
+               <div class="meta-value" style="color:var(--accent)">
+                  {% if reviews %}
+                     {{ "%.1f"|format(reviews|sum(attribute='rating') / reviews|length) }} / 5
+                  {% else %}
+                     No ratings
+                  {% endif %}
+               </div>
+            </div>
+         </div>
+
+      </div>
+      <!-- END RIGHT col -->
+
+   </div>
+   <!-- END detail-grid -->
+
+   <!-- ── REVIEWS SECTION ── -->
+   <div class="reviews-section">
+      <div class="reviews-header">
+         <h2 class="reviews-title"><i class="fas fa-star mr-2" style="color:var(--accent)"></i>Customer Reviews</h2>
+         {% if reviews %}
+         <div class="avg-rating">
+            <div class="score">{{ "%.1f"|format(reviews|sum(attribute='rating') / reviews|length) }}</div>
+            <div>
+               <div class="stars">
+                  {% set avg = (reviews|sum(attribute='rating') / reviews|length)|round|int %}
+                  {% for i in range(1, 6) %}
+                     {% if i <= avg %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star empty"></i>{% endif %}
+                  {% endfor %}
+               </div>
+               <div style="color:var(--text-muted); font-size:0.78rem">{{ reviews|length }} review{{ 's' if reviews|length != 1 }}</div>
+            </div>
+         </div>
+         {% endif %}
+      </div>
+
+      <!-- Review Cards -->
+      {% if reviews %}
+         {% for review in reviews %}
+         <div class="review-card">
+            <div class="review-top">
+               <div class="reviewer-name">
+                  <i class="fas fa-user-circle"></i>
+                  {{ review.reviewer.username }}
+               </div>
+               <div style="display:flex; align-items:center; gap:12px">
+                  <div class="stars">
+                     {% for i in range(1, 6) %}
+                        {% if i <= review.rating %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star" style="color:var(--border)"></i>{% endif %}
+                     {% endfor %}
+                  </div>
+                  <div class="review-date">{{ review.date_posted.strftime('%b %d, %Y') }}</div>
+               </div>
+            </div>
+            <div class="review-comment">{{ review.comment }}</div>
+         </div>
+         {% endfor %}
+      {% else %}
+         <div class="empty-reviews">
+            <i class="fas fa-comment-slash"></i>
+            <p>No reviews yet. Be the first to review this item!</p>
+         </div>
+      {% endif %}
+
+      <!-- Write a Review -->
+      {% if current_user.is_authenticated and has_purchased %}
+      <div class="write-review-box">
+         <div class="write-review-title"><i class="fas fa-pen mr-2" style="color:var(--accent)"></i>Write a Review</div>
+         <form method="POST" action="{{ url_for('add_review', item_id=item.id) }}">
+            {{ review_form.hidden_tag() }}
+            <div class="star-picker">
+               <input type="radio" name="rating" id="s5" value="5"><label for="s5">★</label>
+               <input type="radio" name="rating" id="s4" value="4"><label for="s4">★</label>
+               <input type="radio" name="rating" id="s3" value="3" checked><label for="s3">★</label>
+               <input type="radio" name="rating" id="s2" value="2"><label for="s2">★</label>
+               <input type="radio" name="rating" id="s1" value="1"><label for="s1">★</label>
+            </div>
+            <textarea class="review-textarea" name="comment" placeholder="Share your experience with this item..."></textarea>
+            <button type="submit" class="btn-submit-review">
+               <i class="fas fa-paper-plane mr-1"></i> Submit Review
+            </button>
+         </form>
+      </div>
+      {% elif current_user.is_authenticated and not has_purchased %}
+      <div style="color:var(--text-muted); font-size:0.85rem; margin-top:1rem; padding:1rem; background:var(--bg-card); border-radius:10px; border:1px solid var(--border)">
+         <i class="fas fa-info-circle mr-1" style="color:var(--accent)"></i>
+         You need to purchase this item before leaving a review.
+      </div>
+      {% else %}
+      <div style="color:var(--text-muted); font-size:0.85rem; margin-top:1rem; padding:1rem; background:var(--bg-card); border-radius:10px; border:1px solid var(--border)">
+         <i class="fas fa-sign-in-alt mr-1" style="color:var(--accent)"></i>
+         <a href="{{ url_for('login_page') }}" style="color:var(--accent)">Login</a> to write a review.
+      </div>
+      {% endif %}
+
+   </div>
+   <!-- END reviews-section -->
+
+</div>
+<!-- END detail-wrapper -->
+
+<!-- Purchase Confirm Modal -->
+<div class="modal fade" id="Modal-BuyDetail-{{ item.id }}" tabindex="-1" aria-hidden="true">
+   <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+         <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-shopping-cart mr-2" style="color:#2ecc71"></i>Confirm Purchase</h5>
+            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+         </div>
+         <div class="modal-body" style="padding:1.5rem">
+            <form method="POST" action="{{ url_for('market_page') }}">
+               {{ purchase_form.hidden_tag() }}
+               <p style="font-size:1rem; font-weight:600; text-align:center; margin-bottom:0.5rem">
+                  Buy <strong>{{ item.name }}</strong> for
+                  <span style="color:var(--accent)"><i class="fas fa-rupee-sign"></i>{{ item.price }}</span>?
+               </p>
+               <p style="color:var(--text-muted); font-size:0.85rem; text-align:center; margin-bottom:1.2rem">
+                  This will be deducted from your balance.
+               </p>
+               <input name="purchased_item" type="hidden" value="{{ item.name }}">
+               <button type="submit" style="background:rgba(46,204,113,0.15); border:1px solid rgba(46,204,113,0.4); color:#2ecc71; font-weight:700; width:100%; padding:10px; border-radius:8px; cursor:pointer; transition:all 0.2s ease">
+                  <i class="fas fa-check mr-1"></i> Confirm Purchase
+               </button>
+            </form>
+         </div>
+         <div class="modal-footer">
+            <button type="button" data-dismiss="modal"
+               style="background:transparent; border:1px solid var(--border); color:var(--text-muted); font-size:0.85rem; padding:7px 16px; border-radius:7px; cursor:pointer">
+               Cancel
+            </button>
+         </div>
+      </div>
+   </div>
+</div>
+
+<script>
+function switchImage(url, el) {
+   document.getElementById('mainImg').src = url;
+   document.querySelectorAll('.gallery-thumb').forEach(t => t.classList.remove('active'));
+   el.classList.add('active');
+}
+</script>
+
+{% endblock %}

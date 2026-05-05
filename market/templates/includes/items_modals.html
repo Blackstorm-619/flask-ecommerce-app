@@ -1,0 +1,109 @@
+<style>
+  .modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .modal-header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.2rem 1.5rem;
+  }
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+  .modal-footer {
+    border-top: 1px solid var(--border);
+  }
+  .modal .close {
+    color: var(--text-muted);
+    opacity: 1;
+    text-shadow: none;
+  }
+  .modal .close:hover { color: var(--text-primary); }
+  .modal-confirm-text {
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+  .modal-confirm-sub {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-align: center;
+    margin-bottom: 1.2rem;
+  }
+  .btn-confirm-buy {
+    background: rgba(46,204,113,0.15);
+    border: 1px solid rgba(46,204,113,0.4);
+    color: #2ecc71;
+    font-weight: 700;
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+  }
+  .btn-confirm-buy:hover {
+    background: rgba(46,204,113,0.28);
+    color: #58d68d;
+  }
+  .btn-modal-close {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    padding: 7px 16px;
+    border-radius: 7px;
+    transition: all 0.15s ease;
+  }
+  .btn-modal-close:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+</style>
+
+<!-- More Info Modal -->
+<div class="modal fade" id="Modal-MoreInfo-{{ item.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-info-circle mr-2" style="color:var(--accent)"></i>{{ item.name }}</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body" style="padding:1.5rem; color:var(--text-muted); font-size:0.9rem; line-height:1.7">
+        {{ item.description }}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-modal-close" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Purchase Confirm Modal -->
+<div class="modal fade" id="Modal-PurchaseConfirm-{{ item.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-shopping-cart mr-2" style="color:#2ecc71"></i>Confirm Purchase</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body" style="padding:1.5rem">
+        <form method="POST">
+          {{ purchase_form.hidden_tag() }}
+          <p class="modal-confirm-text">
+            Buy <strong>{{ item.name }}</strong> for <span style="color:var(--accent)"><i class="fas fa-rupee-sign"></i>{{ item.price }}</span>?
+          </p>
+          <p class="modal-confirm-sub">This will be deducted from your balance.</p>
+          <input id="purchased_item" name="purchased_item" type="hidden" value="{{ item.name }}">
+          {{ purchase_form.submit(class="btn-confirm-buy") }}
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-modal-close" data-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>

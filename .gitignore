@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+venv/
+.env
+
+# Flask
+instance/
+*.db
+
+# VS Code
+.vscode/
+tempCodeRunnerFile.py
+
+# OS junk
+.DS_Store
+Thumbs.db
