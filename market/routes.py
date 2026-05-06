@@ -3,7 +3,8 @@ from flask import render_template, redirect, url_for, flash, request
 from market.models import Item, User, Review, ProductImage, Order, Cart
 from market.forms import RegisterForm, LoginForm, PurchaseItemForm, SellItemForm, ReviewForm, CSRFForm
 from flask_login import login_user, logout_user, login_required, current_user
-
+import razorpay, hmac, hashlib, json
+import os
 
 # ── HOME ─────────────────────────────────────────────
 
@@ -314,3 +315,105 @@ def checkout():
         flash(msg, "danger")
 
     return redirect(url_for('market_page'))
+
+# ── PROFILE & ORDER HISTORY ──────────────────────────
+
+@app.route('/profile')
+@login_required
+def profile_page():
+    orders = Order.query.filter_by(user_id=current_user.id)\
+                        .order_by(Order.date_ordered.desc()).all()
+
+    total_spent = sum(o.total_price for o in orders)
+    total_orders = len(orders)
+    owned_count = Item.query.filter_by(owner=current_user.id).count()
+
+    return render_template(
+        'profile.html',
+        orders=orders,
+        total_spent=total_spent,
+        total_orders=total_orders,
+        owned_count=owned_count
+    )
+
+
+@app.route('/orders/<int:order_id>')
+@login_required
+def order_detail(order_id):
+    order = Order.query.get_or_404(order_id)
+
+    if order.user_id != current_user.id:
+        flash("You don't have permission to view this order.", "danger")
+        return redirect(url_for('profile_page'))
+
+    return render_template('order_detail.html', order=order)
+# ── RAZORPAY ─────────────────────────────────────────
+
+razorpay_client = razorpay.Client(
+    auth=(os.getenv('RAZORPAY_KEY_ID'), os.getenv('RAZORPAY_KEY_SECRET'))
+)
+
+@app.route('/cart/create-order', methods=['POST'])
+@login_required
+def create_razorpay_order():
+    entries = Cart.query.filter_by(user_id=current_user.id).all()
+
+    if not entries:
+        return {'error': 'Cart is empty'}, 400
+
+    total_paise = sum(e.item.price * e.quantity * 100 for e in entries
+                      if e.item.owner is None)
+
+    if total_paise == 0:
+        return {'error': 'No valid items'}, 400
+
+    order = razorpay_client.order.create({
+        'amount': total_paise,
+        'currency': 'INR',
+        'payment_capture': 1
+    })
+
+    return {'order_id': order['id'], 'amount': total_paise,
+            'key': app.config['RAZORPAY_KEY_ID'],
+            'name': current_user.username,
+            'email': current_user.email_address}
+
+
+@app.route('/cart/verify-payment', methods=['POST'])
+@login_required
+def verify_payment():
+    data = request.get_json()
+
+    # Verify signature
+    body = data['razorpay_order_id'] + '|' + data['razorpay_payment_id']
+    expected = hmac.new(
+        app.config['RAZORPAY_KEY_SECRET'].encode(),
+        body.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    if expected != data['razorpay_signature']:
+        return {'error': 'Invalid signature'}, 400
+
+    # Complete the purchase (same logic as your old checkout)
+    entries = Cart.query.filter_by(user_id=current_user.id).all()
+    purchased = []
+
+    for entry in entries:
+        item = entry.item
+        if item.owner is not None:
+            db.session.delete(entry)
+            continue
+        item.owner = current_user.id
+        db.session.add(Order(
+            user_id=current_user.id,
+            item_id=item.id,
+            quantity=entry.quantity,
+            total_price=item.price * entry.quantity,
+            status='Completed'
+        ))
+        db.session.delete(entry)
+        purchased.append(item.name)
+
+    db.session.commit()
+    return {'success': True, 'purchased': purchased}
