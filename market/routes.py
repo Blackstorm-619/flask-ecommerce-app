@@ -1,10 +1,9 @@
-from market import app, db
-from flask import render_template, redirect, url_for, flash, request
+from market import app, db, csrf
+from flask import render_template, redirect, url_for, flash, request, jsonify
 from market.models import Item, User, Review, ProductImage, Order, Cart
 from market.forms import RegisterForm, LoginForm, PurchaseItemForm, SellItemForm, ReviewForm, CSRFForm
 from flask_login import login_user, logout_user, login_required, current_user
-import razorpay, hmac, hashlib, json
-import os
+import razorpay, hmac, hashlib, os
 
 # ── HOME ─────────────────────────────────────────────
 
@@ -29,7 +28,6 @@ def market_page():
     selling_form = SellItemForm()
 
     if request.method == "POST":
-        # SELL (keeping old sell-from-modal flow)
         sold_item = request.form.get('sold_item')
         item = Item.query.filter_by(name=sold_item).first()
         if item and current_user.can_sell(item):
@@ -37,7 +35,6 @@ def market_page():
             flash(f"Sold {item.name} back to market!", "success")
         elif sold_item:
             flash(f"Something went wrong selling {sold_item}.", "danger")
-
         return redirect(url_for('market_page'))
 
     return render_template(
@@ -61,9 +58,7 @@ def item_detail(item_id):
     if current_user.is_authenticated:
         has_purchased = (
             item.owner == current_user.id or
-            Order.query.filter_by(
-                user_id=current_user.id, item_id=item_id
-            ).first() is not None
+            Order.query.filter_by(user_id=current_user.id, item_id=item_id).first() is not None
         )
         in_cart = Cart.query.filter_by(
             user_id=current_user.id, item_id=item_id
@@ -92,9 +87,7 @@ def add_review(item_id):
 
     has_purchased = (
         item.owner == current_user.id or
-        Order.query.filter_by(
-            user_id=current_user.id, item_id=item_id
-        ).first()
+        Order.query.filter_by(user_id=current_user.id, item_id=item_id).first()
     )
     if not has_purchased:
         flash("You need to purchase this item before leaving a review.", "danger")
@@ -160,7 +153,6 @@ def login_page():
             flash(f"Welcome back, {user.username}!", "success")
             return redirect(url_for('market_page'))
         flash("Username and password do not match.", "danger")
-
     return render_template('login.html', form=form)
 
 
@@ -178,7 +170,6 @@ def logout_page():
 def cart_page():
     entries = Cart.query.filter_by(user_id=current_user.id).all()
 
-    # Auto-remove items that got purchased by someone else
     valid_entries = []
     for entry in entries:
         if entry.item.owner is None:
@@ -198,7 +189,6 @@ def cart_page():
     ]
 
     total = sum(i['subtotal'] for i in cart_items)
-
     return render_template(
         'cart.html',
         cart_items=cart_items,
@@ -217,20 +207,13 @@ def add_to_cart(item_id):
         return redirect(request.referrer or url_for('market_page'))
 
     quantity = max(1, request.form.get('quantity', 1, type=int))
-
-    existing = Cart.query.filter_by(
-        user_id=current_user.id, item_id=item_id
-    ).first()
+    existing = Cart.query.filter_by(user_id=current_user.id, item_id=item_id).first()
 
     if existing:
         existing.quantity += quantity
         flash(f'Updated quantity for "{item.name}".', "info")
     else:
-        db.session.add(Cart(
-            user_id=current_user.id,
-            item_id=item_id,
-            quantity=quantity
-        ))
+        db.session.add(Cart(user_id=current_user.id, item_id=item_id, quantity=quantity))
         flash(f'"{item.name}" added to cart!', "success")
 
     db.session.commit()
@@ -267,55 +250,6 @@ def update_cart(cart_id):
     return redirect(url_for('cart_page'))
 
 
-@app.route('/cart/checkout', methods=['POST'])
-@login_required
-def checkout():
-    entries = Cart.query.filter_by(user_id=current_user.id).all()
-
-    if not entries:
-        flash("Your cart is empty!", "warning")
-        return redirect(url_for('cart_page'))
-
-    valid, failed = [], []
-    total = 0
-
-    for entry in entries:
-        if entry.item.owner is not None:
-            failed.append(f'"{entry.item.name}" was already sold.')
-            db.session.delete(entry)
-            continue
-        total += entry.item.price * entry.quantity
-        valid.append(entry)
-
-    if current_user.budget < total:
-        flash(f"Insufficient balance. Need ₹{total:,}, have {current_user.prettier_budget}.", "danger")
-        db.session.commit()
-        return redirect(url_for('cart_page'))
-
-    purchased = []
-    for entry in valid:
-        item = entry.item
-        current_user.budget -= item.price * entry.quantity
-        item.owner = current_user.id
-        db.session.add(Order(
-            user_id=current_user.id,
-            item_id=item.id,
-            quantity=entry.quantity,
-            total_price=item.price * entry.quantity,
-            status='Completed'
-        ))
-        db.session.delete(entry)
-        purchased.append(item.name)
-
-    db.session.commit()
-
-    if purchased:
-        flash(f'Order placed! Purchased: {", ".join(purchased)}.', "success")
-    for msg in failed:
-        flash(msg, "danger")
-
-    return redirect(url_for('market_page'))
-
 # ── PROFILE & ORDER HISTORY ──────────────────────────
 
 @app.route('/profile')
@@ -323,17 +257,12 @@ def checkout():
 def profile_page():
     orders = Order.query.filter_by(user_id=current_user.id)\
                         .order_by(Order.date_ordered.desc()).all()
-
-    total_spent = sum(o.total_price for o in orders)
-    total_orders = len(orders)
-    owned_count = Item.query.filter_by(owner=current_user.id).count()
-
     return render_template(
         'profile.html',
         orders=orders,
-        total_spent=total_spent,
-        total_orders=total_orders,
-        owned_count=owned_count
+        total_spent=sum(o.total_price for o in orders),
+        total_orders=len(orders),
+        owned_count=Item.query.filter_by(owner=current_user.id).count()
     )
 
 
@@ -341,31 +270,35 @@ def profile_page():
 @login_required
 def order_detail(order_id):
     order = Order.query.get_or_404(order_id)
-
     if order.user_id != current_user.id:
         flash("You don't have permission to view this order.", "danger")
         return redirect(url_for('profile_page'))
-
     return render_template('order_detail.html', order=order)
+
+
 # ── RAZORPAY ─────────────────────────────────────────
 
 razorpay_client = razorpay.Client(
     auth=(os.getenv('RAZORPAY_KEY_ID'), os.getenv('RAZORPAY_KEY_SECRET'))
 )
 
+
 @app.route('/cart/create-order', methods=['POST'])
+@csrf.exempt
 @login_required
 def create_razorpay_order():
     entries = Cart.query.filter_by(user_id=current_user.id).all()
 
     if not entries:
-        return {'error': 'Cart is empty'}, 400
+        return jsonify({'error': 'Cart is empty'}), 400
 
-    total_paise = sum(e.item.price * e.quantity * 100 for e in entries
-                      if e.item.owner is None)
+    total_paise = sum(
+        e.item.price * e.quantity * 100
+        for e in entries if e.item.owner is None
+    )
 
     if total_paise == 0:
-        return {'error': 'No valid items'}, 400
+        return jsonify({'error': 'No valid items'}), 400
 
     order = razorpay_client.order.create({
         'amount': total_paise,
@@ -373,18 +306,21 @@ def create_razorpay_order():
         'payment_capture': 1
     })
 
-    return {'order_id': order['id'], 'amount': total_paise,
-            'key': app.config['RAZORPAY_KEY_ID'],
-            'name': current_user.username,
-            'email': current_user.email_address}
+    return jsonify({
+        'order_id': order['id'],
+        'amount':   total_paise,
+        'key':      app.config['RAZORPAY_KEY_ID'],
+        'name':     current_user.username,
+        'email':    current_user.email_address
+    })
 
 
 @app.route('/cart/verify-payment', methods=['POST'])
+@csrf.exempt
 @login_required
 def verify_payment():
     data = request.get_json()
 
-    # Verify signature
     body = data['razorpay_order_id'] + '|' + data['razorpay_payment_id']
     expected = hmac.new(
         app.config['RAZORPAY_KEY_SECRET'].encode(),
@@ -393,9 +329,8 @@ def verify_payment():
     ).hexdigest()
 
     if expected != data['razorpay_signature']:
-        return {'error': 'Invalid signature'}, 400
+        return jsonify({'error': 'Invalid signature'}), 400
 
-    # Complete the purchase (same logic as your old checkout)
     entries = Cart.query.filter_by(user_id=current_user.id).all()
     purchased = []
 
@@ -405,6 +340,7 @@ def verify_payment():
             db.session.delete(entry)
             continue
         item.owner = current_user.id
+        current_user.budget -= item.price * entry.quantity
         db.session.add(Order(
             user_id=current_user.id,
             item_id=item.id,
@@ -416,4 +352,4 @@ def verify_payment():
         purchased.append(item.name)
 
     db.session.commit()
-    return {'success': True, 'purchased': purchased}
+    return jsonify({'success': True, 'purchased': purchased})
